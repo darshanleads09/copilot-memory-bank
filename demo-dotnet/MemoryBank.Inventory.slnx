@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MemoryBank.Inventory.Api/MemoryBank.Inventory.Api.csproj" />
+    <Project Path="src/MemoryBank.Inventory.Application/MemoryBank.Inventory.Application.csproj" />
+    <Project Path="src/MemoryBank.Inventory.Domain/MemoryBank.Inventory.Domain.csproj" />
+    <Project Path="src/MemoryBank.Inventory.Infrastructure/MemoryBank.Inventory.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MemoryBank.Inventory.Tests/MemoryBank.Inventory.Tests.csproj" />
+  </Folder>
+</Solution>

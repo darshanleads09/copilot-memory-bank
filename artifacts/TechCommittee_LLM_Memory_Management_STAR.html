@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giving AI a Memory - Tech Committee Meeting</title>
+  <style>
+    :root {
+      --navy: #0b2545;
+      --navy-2: #13315c;
+      --teal: #127a7a;
+      --amber: #f2b632;
+      --red: #d9534f;
+      --ink: #1d2433;
+      --muted: #5b6577;
+      --S: #3b82c4;
+      --T: #7a5cc4;
+      --A: #127a7a;
+      --R: #5aa832;
+      --sidebar: 260px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: #e9eef2;
+      overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: var(--sidebar) 1fr;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+      transition: grid-template-columns .25s;
+    }
+
+    .app.collapsed {
+      grid-template-columns: 0 1fr;
+    }
+
+    .toolbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      background: var(--navy);
+      color: #dbe9ee;
+    }
+
+    .toolbar .title {
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toolbar button {
+      background: transparent;
+      color: #dbe9ee;
+      border: 1px solid #2f4d74;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .toolbar button:hover {
+      background: #1b3b66;
+      color: #fff;
+    }
+
+    .toolbar .counter {
+      font-size: 13px;
+      min-width: 52px;
+      text-align: center;
+    }
+
+    .sidebar {
+      background: #f7f9fb;
+      border-right: 1px solid #d5dee6;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-top: 10px;
+    }
+
+    .thumb {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 12px 10px 14px;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+    }
+
+    .thumb:hover {
+      background: #eaf1f5;
+    }
+
+    .thumb.active {
+      background: #dcecee;
+      border-left-color: var(--teal);
+    }
+
+    .thumb .n {
+      font-size: 12px;
+      color: var(--muted);
+      width: 16px;
+      text-align: right;
+      padding-top: 4px;
+    }
+
+    .thumb .box {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #d5dee6;
+      border-radius: 6px;
+      padding: 10px;
+      border-top: 4px solid var(--c);
+    }
+
+    .thumb.active .box {
+      box-shadow: 0 0 0 2px rgba(18, 122, 122, .25);
+    }
+
+    .thumb .box small {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--c);
+    }
+
+    .thumb .box b {
+      display: block;
+      font-size: 13px;
+      color: var(--navy);
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    .viewport {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .stage {
+      position: relative;
+      width: min(100%, calc((100vh - 92px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      container-type: inline-size;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 12px 36px rgba(11, 37, 69, .18);
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      padding: 3cqw 4.4cqw 5.4cqw;
+      background: linear-gradient(135deg, #ffffff 0%, #f4f8fa 60%, #e6f2f1 100%);
+    }
+
+    .slide.active {
+      display: flex;
+      animation: fade .3s ease;
+    }
+
+    @keyframes fade {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .slide-footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 3.4cqw;
+      background: var(--navy);
+      color: #cfe3e8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4.4cqw;
+      font-size: .95cqw;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      z-index: 2;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2cqw;
+    }
+
+    .badge {
+      display: inline-block;
+      font-weight: 800;
+      font-size: 1.05cqw;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #fff;
+      padding: .45em 1em;
+      border-radius: 999px;
+    }
+
+    .S {
+      background: var(--S);
+    }
+
+    .T {
+      background: var(--T);
+    }
+
+    .A {
+      background: var(--A);
+    }
+
+    .R {
+      background: var(--R);
+    }
+
+    .tagline {
+      font-size: .95cqw;
+      letter-spacing: .18em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 3.6cqw;
+      line-height: 1.1;
+      color: var(--navy);
+      font-weight: 900;
+    }
+
+    h1 span {
+      color: var(--teal);
+    }
+
+    h2 {
+      font-size: 2.8cqw;
+      color: var(--navy);
+      font-weight: 800;
+      margin-bottom: 1.2cqw;
+    }
+
+    h3 {
+      font-size: 1.6cqw;
+      color: var(--teal);
+      margin-bottom: .5cqw;
+    }
+
+    p,
+    li {
+      font-size: 1.45cqw;
+      line-height: 1.5;
+    }
+
+    .lead {
+      font-size: 1.6cqw;
+      color: var(--muted);
+      margin: .8cqw 0 1.8cqw;
+    }
+
+    ul.clean {
+      list-style: none;
+    }
+
+    ul.clean li {
+      padding-left: 1.3em;
+      position: relative;
+      margin: .35cqw 0;
+    }
+
+    ul.clean li::before {
+      content: "\2713";
+      position: absolute;
+      left: 0;
+      color: var(--teal);
+      font-weight: 800;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1.4cqw;
+      align-content: start;
+    }
+
+    .g2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .g3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .g4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.4cqw 1.3cqw;
+      box-shadow: 0 4px 14px rgba(11, 37, 69, .08);
+      border-top: 4px solid var(--teal);
+    }
+
+    .card.bad {
+      border-top-color: var(--red);
+    }
+
+    .card.t {
+      border-top-color: var(--T);
+    }
+
+    .card.r {
+      border-top-color: var(--R);
+    }
+
+    .card.warn {
+      border-top-color: var(--amber);
+    }
+
+    .card p,
+    .card li {
+      font-size: 1.35cqw;
+    }
+
+    .icon {
+      font-size: 2.8cqw;
+      margin-bottom: .4cqw;
+    }
+
+    .mt {
+      margin-top: 1.6cqw;
+    }
+
+    .quote {
+      border-left: 5px solid var(--teal);
+      background: #fff;
+      padding: 1.1cqw 1.3cqw;
+      border-radius: 8px;
+      color: var(--navy-2);
+      font-size: 1.5cqw;
+      box-shadow: 0 3px 10px rgba(11, 37, 69, .06);
+    }
+
+    .fix {
+      display: grid;
+      grid-template-columns: 1fr 2.4cqw 1.6fr;
+      align-items: center;
+      gap: .6cqw;
+      background: #fff;
+      border-radius: 10px;
+      padding: 1cqw 1.2cqw;
+      box-shadow: 0 3px 10px rgba(11, 37, 69, .08);
+      margin-bottom: .9cqw;
+    }
+
+    .fix .prob {
+      font-weight: 700;
+      color: var(--red);
+      font-size: 1.4cqw;
+    }
+
+    .fix .arrow {
+      color: var(--teal);
+      font-size: 1.8cqw;
+      text-align: center;
+    }
+
+    .fix .sol {
+      font-size: 1.2cqw;
+    }
+
+    .fix .feature-name {
+      font-weight: 700;
+      color: var(--navy);
+      font-size: 1.15cqw;
+    }
+
+    .tree {
+      font-family: Consolas, "Cascadia Code", monospace;
+      font-size: 1.08cqw;
+      line-height: 1.5;
+      background: #0f2440;
+      color: #e3eef3;
+      padding: 1cqw 1.2cqw;
+      border-radius: 10px;
+      white-space: pre;
+    }
+
+    .tree .c {
+      color: #8fc9b9;
+    }
+
+    .tree .d {
+      color: #ffd479;
+      font-weight: 700;
+    }
+
+    .tree .k {
+      display: inline-block;
+      width: 1.6cqw;
+      height: 1.6cqw;
+      line-height: 1.6cqw;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--amber);
+      color: #0b2545;
+      font-weight: 800;
+      font-size: .95cqw;
+    }
+
+    .legend {
+      font-size: 1.05cqw;
+      color: var(--muted);
+      margin-top: .6cqw;
+    }
+
+    .legend .k {
+      display: inline-block;
+      width: 1.5cqw;
+      height: 1.5cqw;
+      line-height: 1.5cqw;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--amber);
+      color: #0b2545;
+      font-weight: 800;
+      font-size: .9cqw;
+    }
+
+    .benefit {
+      display: flex;
+      gap: 1cqw;
+      align-items: flex-start;
+    }
+
+    .benefit .icon {
+      flex: 0 0 auto;
+    }
+
+    .metric {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.1cqw 1cqw;
+      box-shadow: 0 4px 14px rgba(11, 37, 69, .08);
+      border-top: 4px solid var(--R);
+      text-align: center;
+    }
+
+    .metric .num {
+      font-size: 3.6cqw;
+      font-weight: 900;
+      color: var(--R);
+      line-height: 1;
+    }
+
+    .metric .lbl {
+      font-size: 1.25cqw;
+      font-weight: 700;
+      color: var(--navy);
+      margin-top: .4cqw;
+    }
+
+    .metric .sub {
+      font-size: 1.05cqw;
+      color: var(--muted);
+      margin-top: .3cqw;
+    }
+
+    .two-col {
+      columns: 2;
+      column-gap: 2cqw;
+    }
+
+    .footnote {
+      font-size: .95cqw;
+      color: var(--muted);
+      margin-top: .8cqw;
+    }
+
+    .E {
+      background: var(--navy-2);
+    }
+
+    .dbg {
+      background: #151719;
+      color: #cfd3d7;
+      border-radius: 10px;
+      padding: 1cqw 1.1cqw;
+      box-shadow: 0 4px 14px rgba(11, 37, 69, .18);
+    }
+
+    .dbg.with {
+      border-top: 5px solid var(--R);
+    }
+
+    .dbg.without {
+      border-top: 5px solid var(--red);
+    }
+
+    .dbg .tag {
+      display: inline-block;
+      font-size: .85cqw;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .2em .7em;
+      border-radius: 999px;
+      color: #fff;
+    }
+
+    .dbg.with .tag {
+      background: var(--R);
+    }
+
+    .dbg.without .tag {
+      background: var(--red);
+    }
+
+    .dbg h4 {
+      color: #f0f0f0;
+      font-size: 1.2cqw;
+      margin: .5cqw 0 .2cqw;
+    }
+
+    .dbg .meta {
+      font-size: .85cqw;
+      color: #9aa0a6;
+    }
+
+    .dbg .tiles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5cqw;
+      margin-top: .7cqw;
+    }
+
+    .dbg .tile {
+      border: 1px solid #3a3d41;
+      border-radius: 6px;
+      padding: .45cqw .6cqw;
+    }
+
+    .slide[data-section="E"] h2 {
+      margin-bottom: .4cqw;
+    }
+
+    .slide[data-section="E"] .dbg .tile {
+      padding: .1cqw .45cqw;
+    }
+
+    .slide[data-section="E"] .footnote {
+      margin-top: .2cqw;
+    }
+
+    .dbg .tile span {
+      display: block;
+      font-size: .8cqw;
+      color: #9aa0a6;
+    }
+
+    .dbg .tile b {
+      font-size: 1.25cqw;
+      color: #f0f0f0;
+    }
+
+    .dbg .tile.hl {
+      border-color: #6b7280;
+      background: #1e2226;
+    }
+
+    .snapshot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.2cqw;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .snapshot {
+      min-width: 0;
+      overflow: hidden;
+      background: #1e1e1e;
+      border: 1px solid #3c4148;
+      border-radius: 7px;
+      box-shadow: 0 5px 16px rgba(11, 37, 69, .16);
+      color: #d4d4d4;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .snapshot-bar {
+      height: 2.4cqw;
+      display: flex;
+      align-items: center;
+      gap: .45cqw;
+      padding: 0 .75cqw;
+      background: #323233;
+      color: #c5c5c5;
+      font-size: .88cqw;
+    }
+
+    .snapshot-dot {
+      width: .48cqw;
+      height: .48cqw;
+      border-radius: 50%;
+      background: #e35d5b;
+      box-shadow: .75cqw 0 #e7bd4a, 1.5cqw 0 #62c554;
+      margin-right: 1.5cqw;
+      flex: 0 0 auto;
+    }
+
+    .snapshot-body {
+      height: calc(100% - 2.4cqw);
+      padding: .8cqw;
+      font-size: .98cqw;
+      line-height: 1.55;
+    }
+
+    .snapshot-label {
+      display: flex;
+      justify-content: space-between;
+      gap: .5cqw;
+      margin: .55cqw 0 .2cqw;
+      color: var(--navy);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .snapshot-label span + span {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .snapshot-caption {
+      color: #435466;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .palette {
+      width: 92%;
+      margin: 3.2cqw auto 0;
+      padding: .7cqw;
+      background: #252526;
+      border: 1px solid #454545;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .35);
+    }
+
+    .palette-search,
+    .palette-item {
+      padding: .42cqw .55cqw;
+      font-size: .95cqw;
+    }
+
+    .palette-search {
+      border: 1px solid #007fd4;
+      margin-bottom: .45cqw;
+      color: #f0f0f0;
+    }
+
+    .palette-item.active {
+      background: #04395e;
+      color: #fff;
+    }
+
+    .explorer {
+      display: grid;
+      grid-template-columns: 39% 61%;
+      height: 100%;
+      margin: -.8cqw;
+    }
+
+    .explorer-tree {
+      padding: .7cqw .45cqw;
+      background: #252526;
+      border-right: 1px solid #3c3c3c;
+      color: #c5c5c5;
+      font-size: .8cqw;
+      line-height: 1.8;
+      white-space: nowrap;
+    }
+
+    .explorer-tree .selected {
+      background: #37373d;
+      color: #fff;
+    }
+
+    .editor {
+      padding: .8cqw .6cqw;
+      color: #d4d4d4;
+      font: .82cqw/1.7 Consolas, monospace;
+    }
+
+    .editor .syntax {
+      color: #569cd6;
+      font-weight: 700;
+    }
+
+    .editor .comment {
+      color: #6a9955;
+    }
+
+    .chat {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #1e1e1e;
+    }
+
+    .chat-title {
+      padding: .7cqw;
+      border-bottom: 1px solid #3c3c3c;
+      font-size: .9cqw;
+    }
+
+    .chat-content {
+      flex: 1;
+      padding: .8cqw;
+      color: #bdc3ca;
+      font-size: .86cqw;
+      line-height: 1.5;
+    }
+
+    .chat-input {
+      margin: .6cqw;
+      padding: .65cqw;
+      border: 1px solid #555;
+      border-radius: 5px;
+      background: #2a2d2e;
+      color: #f3f3f3;
+      font: .9cqw Consolas, monospace;
+    }
+
+    .snapshot-note {
+      margin-top: .55cqw;
+      color: var(--muted);
+      font-size: .85cqw;
+    }
+
+    .memory-flow {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1cqw;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(11, 37, 69, .08);
+    }
+
+    .memory-flow .mermaid {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .memory-flow svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .pie {
+      width: 13cqw;
+      height: 13cqw;
+      border-radius: 50%;
+      margin: .8cqw auto;
+      border: 2px solid #000;
+      background: conic-gradient(#4a7ab5 0 38.1%, #6a9a64 0 73.8%, #96621a 0 90.5%, #b0675c 0 100%);
+    }
+
+    .pie-legend {
+      list-style: none;
+    }
+
+    .pie-legend li {
+      font-size: .95cqw;
+      color: #e3e3e3;
+      display: flex;
+      align-items: center;
+      gap: .5cqw;
+      margin: .25cqw 0;
+    }
+
+    .pie-legend i {
+      width: 1cqw;
+      height: 1cqw;
+      display: inline-block;
+      border-radius: 2px;
+    }
+
+    .notes {
+      display: none;
+      position: absolute;
+      right: 1.4cqw;
+      top: 1.4cqw;
+      width: 36%;
+      max-height: 80%;
+      overflow: auto;
+      background: #fffbe8;
+      border: 1px solid #e9d98d;
+      border-radius: 8px;
+      padding: 1cqw;
+      font-size: 1.1cqw;
+      color: #5a4a00;
+      z-index: 3;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .15);
+    }
+
+    .show-notes .slide.active .notes {
+      display: block;
+    }
+
+    .app.present {
+      grid-template-columns: 0 1fr;
+      grid-template-rows: 0 1fr;
+    }
+
+    .app.present .toolbar {
+      display: none;
+    }
+
+    .app.present .viewport {
+      padding: 0;
+      background: #000;
+    }
+
+    .app.present .stage {
+      width: min(100vw, calc(100vh * 16 / 9));
+      border-radius: 0;
+    }
+
+    @media print {
+
+      html,
+      body {
+        overflow: visible;
+        background: #fff;
+      }
+
+      .app {
+        display: block;
+        height: auto;
+      }
+
+      .toolbar,
+      .sidebar,
+      .notes {
+        display: none !important;
+      }
+
+      .viewport {
+        padding: 0;
+        display: block;
+      }
+
+      .stage {
+        width: 100%;
+        aspect-ratio: auto;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: visible;
+      }
+
+      .slide {
+        position: relative;
+        display: flex !important;
+        aspect-ratio: 16 / 9;
+        page-break-after: always;
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app" id="app">
+    <header class="toolbar">
+      <button id="btnMenu" title="Show or hide slide panel (M)">&#9776;</button>
+      <div class="title">Giving AI a Memory</div>
+      <button id="btnPrev" title="Previous">&#9664;</button>
+      <div class="counter" id="counter">1 / 5</div>
+      <button id="btnNext" title="Next">&#9654;</button>
+      <button id="btnPresent" title="Present (P)">&#9655; Present</button>
+    </header>
+
+    <nav class="sidebar" id="sidebar" aria-label="Slides"></nav>
+
+    <main class="viewport">
+      <div class="stage" id="stage">
+
+        <!-- 1. SITUATION -->
+        <section class="slide" data-section="S" data-title="AI forgets everything">
+          <div class="topbar"><span class="badge S">S &middot; Situation</span><span class="tagline">Memory for AI
+              helpers</span></div>
+          <h1>Giving AI a Memory<br><span>so it remembers, tells the truth, and stays on task</span></h1>
+          <p class="lead">We use AI to read, write, and fix code. But every new chat starts with no memory of the
+            last one.</p>
+          <div class="grid g3">
+            <div class="card bad">
+              <div class="icon">&#129504;</div>
+              <h3>It forgets</h3>
+              <p>Each time, we explain the project again. The AI searches the code again. This wastes time and tokens.</p>
+            </div>
+            <div class="card bad">
+              <div class="icon">&#127787;</div>
+              <h3>It guesses</h3>
+              <p>If it does not know, it may guess. The answer can sound right but name files, settings, or actions that
+                do not exist.</p>
+            </div>
+            <div class="card bad">
+              <div class="icon">&#129517;</div>
+              <h3>It loses focus</h3>
+              <p>On long tasks, it can forget the goal, revisit old choices, or change more than we asked.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. TASK -->
+        <section class="slide" data-section="T" data-title="Goal: a simple, reliable memory">
+          <div class="topbar"><span class="badge T">T &middot; Task</span><span class="tagline">Our goal</span></div>
+          <h2>Our goal: give AI memory it can trust</h2>
+          <p class="lead">No new tools or servers. Just text files kept with the code, shared with the team, and
+            reviewed like code.</p>
+          <div class="grid g3">
+            <div class="card t">
+              <div class="icon">&#128260;</div>
+              <h3>Remember</h3>
+              <p>Pick up a task where we left off, without explaining it again.</p>
+            </div>
+            <div class="card t">
+              <div class="icon">&#9989;</div>
+              <h3>Stay honest</h3>
+              <p>Use facts we can check, not guesses.</p>
+            </div>
+            <div class="card t">
+              <div class="icon">&#127919;</div>
+              <h3>Stay focused</h3>
+              <p>Follow the task, project rules, and current design.</p>
+            </div>
+          </div>
+          <div class="quote mt">Think of it as a notebook for AI: it reads the notes when work starts and updates them
+            as it works.</div>
+        </section>
+
+        <!-- 3. ACTION -->
+        <section class="slide" data-section="A" data-title="How it works">
+            <div class="topbar"><span class="badge A">A &middot; Action</span><span class="tagline">What I built</span>
+          </div>
+            <h2>I built the Copilot Memory Bank extension</h2>
+          <div class="grid" style="grid-template-columns:1.15fr 1fr">
+            <div>
+              <h3>The memory-bank files</h3>
+              <div class="tree"><span class="d">memory-bank/</span>
+                ├─ projectbrief.md <span class="c">project goals and scope</span>
+                ├─ activeContext.md <span class="k">1</span> <span class="c">current work and blockers</span>
+                ├─ progress.md <span class="k">2</span> <span class="c">done, next steps, known issues</span>
+                ├─ systemPatterns.md <span class="c">design and code rules</span>
+                ├─ techContext.md <span class="c">tools and limits</span>
+                ├─ <span class="d">tasks/</span> <span class="c">notes from major tasks</span>
+                │  ├─ _index.md <span class="c">status + search words</span>
+                │  └─ 0000-template.md <span class="c">request, choices, result, checks</span>
+                └─ <span class="d">decisions/</span>
+                   └─ 0000-template.md <span class="c">template for numbered decision notes</span></div>
+              <p class="legend"><span class="k">1</span>&ndash;<span class="k">2</span> = added to chat at the start
+                when optional hooks are on. The task index finds a few related task notes.</p>
+            </div>
+            <div>
+              <h3>Extension features</h3>
+                <div class="fix"><span class="feature-name">Set up</span><span class="arrow">&#10140;</span><span
+                  class="sol">Creates memory files and Copilot rules. Keeps files that already exist.</span></div>
+              <div class="fix"><span class="feature-name">Populate</span><span class="arrow">&#10140;</span><span
+                  class="sol"><code>/memory-init</code> reads the code and fills in the memory files. Setup can open it for you.</span></div>
+                <div class="fix"><span class="feature-name">Keep it current</span><span class="arrow">&#10140;</span><span
+                  class="sol">Update notes (<code>/memory-update</code>), plan work (<code>/task-start</code>), or remove old notes (<code>/memory-prune</code>).</span></div>
+              <div class="fix"><span class="feature-name">Manage</span><span class="arrow">&#10140;</span><span
+                  class="sol">Commands open current notes or save a numbered note about a choice.</span></div>
+              <div class="fix"><span class="feature-name">Integrate</span><span class="arrow">&#10140;</span><span
+                  class="sol">Optional hooks add notes to chat and check if memory needs an update. Settings can suggest the extension to teammates or keep current notes out of Git.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. EXTENSION SNAPSHOTS -->
+        <section class="slide" data-section="A" data-title="Extension snapshots">
+          <div class="topbar"><span class="badge A">A &middot; In action</span><span class="tagline">Representative workflow views</span></div>
+          <h2>From one command to persistent project context</h2>
+          <div class="snapshot-grid">
+            <div>
+              <div class="snapshot" style="height:25cqw">
+                <div class="snapshot-bar"><span class="snapshot-dot"></span>Visual Studio Code &nbsp; | &nbsp; copilot-memory-bank</div>
+                <div class="snapshot-body">
+                  <div class="palette">
+                    <div class="palette-search">&gt; Memory Bank: Initialize</div>
+                    <div class="palette-item active">Memory Bank: Initialize</div>
+                    <div class="palette-item">Memory Bank: Open Active Context</div>
+                    <div class="palette-item">Memory Bank: Add Decision Record</div>
+                  </div>
+                </div>
+              </div>
+              <div class="snapshot-label"><span>1. Initialize</span><span>Command Palette</span></div>
+              <p class="snapshot-caption">Creates the memory-bank files and leaves existing files unchanged.</p>
+            </div>
+            <div>
+              <div class="snapshot" style="height:25cqw">
+                <div class="snapshot-bar"><span class="snapshot-dot"></span>Visual Studio Code &nbsp; | &nbsp; Explorer</div>
+                <div class="snapshot-body">
+                  <div class="explorer">
+                    <div class="explorer-tree">EXPLORER<br>▾ COSMOS<br>&nbsp; ▾ memory-bank<br>&nbsp;&nbsp; ▸ decisions<br>&nbsp;&nbsp; ▸ tasks<br>&nbsp;&nbsp; activeContext.md<br>&nbsp;&nbsp; progress.md<br>&nbsp;&nbsp; projectbrief.md<br>&nbsp;&nbsp; systemPatterns.md<br>&nbsp;&nbsp; techContext.md<br>&nbsp; ▸ .github</div>
+                    <div class="editor"><span class="syntax"># Active context</span><br><br><span class="syntax">## Current focus</span><br>- Maintain the memory bank<br><br><span class="syntax">## Recent changes</span><br>- (verified project notes)<br><br><span class="syntax">## Next steps</span><br>- Continue from the recorded state</div>
+                  </div>
+                </div>
+              </div>
+              <div class="snapshot-label"><span>2. Review the files</span><span>Workspace</span></div>
+              <p class="snapshot-caption">Project context, current work, progress, patterns, and task records stay with the code.</p>
+            </div>
+            <div>
+              <div class="snapshot" style="height:25cqw">
+                <div class="snapshot-bar"><span class="snapshot-dot"></span>Visual Studio Code &nbsp; | &nbsp; Copilot Chat</div>
+                <div class="snapshot-body">
+                  <div class="chat">
+                    <div class="chat-title">COPILOT CHAT</div>
+                    <div class="chat-content">Memory Bank created.<br><br>Initialize the project notes from repository evidence. The prompt asks Copilot to check the code and mark unknowns instead of guessing.</div>
+                    <div class="chat-input">/memory-init</div>
+                  </div>
+                </div>
+              </div>
+              <div class="snapshot-label"><span>3. Fill from the code</span><span>Copilot Chat</span></div>
+              <p class="snapshot-caption">Initialization can open the bundled <code>/memory-init</code> prompt, ready to run.</p>
+            </div>
+          </div>
+          <p class="snapshot-note">Representative UI views based on the extension's implemented commands and scaffold; not captured application screenshots.</p>
+        </section>
+
+        <!-- 5. MEMORY FLOW -->
+        <section class="slide" data-section="A" data-title="How memory works">
+          <div class="topbar"><span class="badge A">A &middot; In practice</span><span class="tagline">The memory lifecycle</span></div>
+          <h2>How memory works</h2>
+          <div class="memory-flow">
+            <div class="mermaid">
+flowchart TB
+  subgraph setup["Set up once"]
+    direction LR
+    A["Initialize memory bank"] --> B["Create memory files, rules, and optional hooks"]
+  end
+  subgraph session["Each session"]
+    direction LR
+    C["Start a Copilot session"] --> D{"SessionStart hook enabled?"}
+    D -->|Yes| E["Inject activeContext.md and progress.md"]
+    D -->|No| F["Continue without automatic context injection"]
+    E --> G["Start substantial work with /task-start"]
+    F --> G
+    G --> H["Match task cues in tasks/_index.md"]
+    H --> I["Read up to 3 relevant task records"]
+  end
+  subgraph work["Work and update"]
+    direction LR
+    J["Work on the task"] --> K["Run /memory-update"]
+    K --> L["Update context, progress, task record, and index"]
+    L --> M["Commit shared memory for teammates"]
+    J --> N{"Stop hook detects newer workspace changes?"}
+    N -->|Yes| O["Ask the agent to update memory"]
+    O --> K
+    N -->|No| P["Finish"]
+  end
+  setup --> session
+  session --> work
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. RESULT -->
+        <section class="slide" data-section="R" data-title="The benefits">
+          <div class="topbar"><span class="badge R">R &middot; Result</span><span class="tagline">Early results: one run each</span></div>
+          <h2>Two test runs</h2>
+          <div class="grid g4">
+            <div class="metric">
+              <div class="num">4.2&times;</div>
+              <div class="lbl">faster</div>
+              <div class="sub">13m 27s &rarr; 3m 13s</div>
+            </div>
+            <div class="metric">
+              <div class="num">&minus;71%</div>
+              <div class="lbl">AI turns</div>
+              <div class="sub">48 &rarr; 14 turns</div>
+            </div>
+            <div class="metric">
+              <div class="num">&minus;48%</div>
+              <div class="lbl">tokens</div>
+              <div class="sub">3.53M &rarr; 1.84M</div>
+            </div>
+            <div class="metric">
+              <div class="num">&minus;23%</div>
+              <div class="lbl">AI credits</div>
+              <div class="sub">155.9 &rarr; 120.0 AIC</div>
+            </div>
+          </div>
+          <div class="card r mt">
+            <ul class="clean two-col">
+              <li><b>Shared notes:</b> stay with the code</li>
+              <li><b>Code wins:</b> check notes against the code</li>
+              <li><b>Keep focus:</b> show current work and next steps</li>
+              <li><b>Save choices:</b> write down why</li>
+              <li><b>61% fewer AI tool calls:</b> 69 without memory, 27 with; no errors in either run</li>
+              <li><b>Team notes:</b> review them with the code</li>
+            </ul>
+          </div>
+          <div class="quote mt"><b>In this test:</b> the memory-bank run took fewer turns, used fewer tokens and credits,
+            and made fewer tool calls. More runs are needed. <b>Questions?</b></div>
+          <p class="footnote">Same prompt and COSMOS repo; one run each. This early result does not prove memory will always
+            cause the same change. More runs are in progress. Details on slide 5.</p>
+        </section>
+
+        <!-- 5. EVIDENCE (backup, not part of the 3-minute talk) -->
+        <section class="slide" data-section="E" data-title="Evidence: Agent Debug Logs">
+            <div class="topbar"><span class="badge E">Extra details</span><span class="tagline">Copilot run logs</span></div>
+            <h2>One run with memory, one without</h2>
+          <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="dbg without">
+              <span class="tag">Without memory bank</span>
+              <h4>Run without memory</h4>
+              <div class="meta">Created 10/26/2026, 1:20:10 PM<br>Last activity 10/26/2026, 1:33:37 PM</div>
+              <div class="tiles">
+                <div class="tile hl"><span>AI turns</span><b>48</b></div>
+                <div class="tile hl"><span>Tool calls</span><b>69</b></div>
+                <div class="tile"><span>Input tokens</span><b>3,513,233</b></div>
+                <div class="tile"><span>Output tokens</span><b>19,585</b></div>
+                <div class="tile"><span>Cached tokens</span><b>3,416,379</b></div>
+                <div class="tile hl"><span>Total tokens</span><b>3,532,818</b></div>
+                <div class="tile"><span>Errors</span><b>0</b></div>
+                <div class="tile hl"><span>Copilot use (AIC)</span><b>155.91</b></div>
+              </div>
+            </div>
+            <div class="dbg with">
+              <span class="tag">With memory bank</span>
+              <h4>Run with memory</h4>
+              <div class="meta">Created 10/25/2026, 10:25:58 PM<br>Last activity 10/25/2026, 10:29:11 PM</div>
+              <div class="tiles">
+                <div class="tile hl"><span>AI turns</span><b>14</b></div>
+                <div class="tile hl"><span>Tool calls</span><b>27</b></div>
+                <div class="tile"><span>Input tokens</span><b>1,828,979</b></div>
+                <div class="tile"><span>Output tokens</span><b>9,607</b></div>
+                <div class="tile"><span>Cached tokens</span><b>1,695,221</b></div>
+                <div class="tile hl"><span>Total tokens</span><b>1,838,586</b></div>
+                <div class="tile"><span>Errors</span><b>0</b></div>
+                <div class="tile hl"><span>Copilot use (AIC)</span><b>119.99</b></div>
+              </div>
+            </div>
+            <div class="dbg">
+              <h4>42 fewer tool calls in this test</h4>
+              <div class="pie" role="img"
+                aria-label="Searches 38%, file reads 36%, folder lists 17%, past chat and Git checks 10%">
+              </div>
+              <ul class="pie-legend">
+                <li><i style="background:#4a7ab5"></i>Searches avoided: 16 (38%)</li>
+                <li><i style="background:#6a9a64"></i>File reads avoided: 15 (36%)</li>
+                <li><i style="background:#96621a"></i>Folder lists avoided: 7 (17%)</li>
+                <li><i style="background:#b0675c"></i>Past chat and Git checks avoided: 4 (10%)</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote">Numbers are from the Copilot log screenshots. The chart shows 69 &minus; 27 = 42 fewer calls.</p>
+        </section>
+
+        <div class="slide-footer"><span><b style="color:#fff">DAA</b> &nbsp;Data | Developer XP | Architecture | AI |
+            Assets</span><span id="footerCounter"></span></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js" integrity="sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2" crossorigin="anonymous"></script>
+  <script>
+    (function () {
+      if (window.mermaid) {
+        window.mermaid.initialize({
+          startOnLoad: false,
+          theme: 'base',
+          themeVariables: {
+            primaryColor: '#e6f2f1',
+            primaryTextColor: '#0b2545',
+            primaryBorderColor: '#127a7a',
+            lineColor: '#5b6577',
+            secondaryColor: '#f4f8fa',
+            tertiaryColor: '#fff',
+            fontFamily: 'Segoe UI, sans-serif',
+            fontSize: '20px'
+          },
+          flowchart: { useMaxWidth: true, nodeSpacing: 30, rankSpacing: 40 }
+        });
+      }
+
+      var app = document.getElementById('app');
+      var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+      var sidebar = document.getElementById('sidebar');
+      var counter = document.getElementById('counter');
+      var footerCounter = document.getElementById('footerCounter');
+      var sections = { S: 'Situation', T: 'Task', A: 'Action', R: 'Result', E: 'Backup' };
+      var colors = { S: 'var(--S)', T: 'var(--T)', A: 'var(--A)', R: 'var(--R)', E: 'var(--navy-2)' };
+      var thumbs = [];
+      var current = 0;
+
+      slides.forEach(function (slide, i) {
+        var sec = slide.getAttribute('data-section');
+        var t = document.createElement('div');
+        t.className = 'thumb';
+        t.setAttribute('role', 'button');
+        t.setAttribute('tabindex', '0');
+        t.style.setProperty('--c', colors[sec]);
+        t.innerHTML = '<div class="n">' + (i + 1) + '</div><div class="box"><small>' + sections[sec] + '</small><b>' + slide.getAttribute('data-title') + '</b></div>';
+        t.addEventListener('click', function () { show(i); });
+        t.addEventListener('keydown', function (e) { if (e.key === 'Enter') { show(i); } });
+        sidebar.appendChild(t);
+        thumbs.push(t);
+      });
+
+      function show(index) {
+        current = Math.max(0, Math.min(slides.length - 1, index));
+        slides.forEach(function (s, i) { s.classList.toggle('active', i === current); });
+        var diagram = slides[current].querySelector('.mermaid');
+        if (diagram && window.mermaid && !diagram.dataset.rendered) {
+          diagram.dataset.rendered = 'true';
+          window.mermaid.run({ nodes: [diagram] });
+        }
+        thumbs.forEach(function (t, i) { t.classList.toggle('active', i === current); });
+        counter.textContent = (current + 1) + ' / ' + slides.length;
+        footerCounter.textContent = (current + 1) + ' / ' + slides.length;
+        history.replaceState(null, '', '#' + (current + 1));
+      }
+
+      function togglePresent() {
+        app.classList.toggle('present');
+        if (app.classList.contains('present')) {
+          if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen().catch(function () { }); }
+        } else if (document.fullscreenElement) { document.exitFullscreen(); }
+      }
+
+      document.getElementById('btnPrev').addEventListener('click', function () { show(current - 1); });
+      document.getElementById('btnNext').addEventListener('click', function () { show(current + 1); });
+      document.getElementById('btnMenu').addEventListener('click', function () { app.classList.toggle('collapsed'); });
+      document.getElementById('btnPresent').addEventListener('click', togglePresent);
+      document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement) { app.classList.remove('present'); } });
+
+      document.addEventListener('keydown', function (e) {
+        if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].indexOf(e.key) >= 0) { e.preventDefault(); show(current + 1); }
+        else if (['ArrowLeft', 'ArrowUp', 'PageUp'].indexOf(e.key) >= 0) { e.preventDefault(); show(current - 1); }
+        else if (e.key === 'Home') { show(0); }
+        else if (e.key === 'End') { show(slides.length - 1); }
+        else if (e.key === 'n' || e.key === 'N') { app.classList.toggle('show-notes'); }
+        else if (e.key === 'm' || e.key === 'M') { app.classList.toggle('collapsed'); }
+        else if (e.key === 'p' || e.key === 'P' || e.key === 'F5') { e.preventDefault(); togglePresent(); }
+        else if (e.key === 'Escape') { app.classList.remove('present'); }
+      });
+
+      document.getElementById('stage').addEventListener('click', function (e) {
+        if (!app.classList.contains('present') || e.target.closest('.notes')) { return; }
+        var rect = this.getBoundingClientRect();
+        show(e.clientX - rect.left > rect.width / 2 ? current + 1 : current - 1);
+      });
+
+      var start = parseInt(location.hash.replace('#', ''), 10);
+      show(isNaN(start) ? 0 : start - 1);
+    })();
+  </script>
+</body>
+
+</html>

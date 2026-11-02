@@ -1,0 +1,107 @@
+{
+  "name": "copilot-memory-bank",
+  "displayName": "Copilot Memory Bank",
+  "description": "One-click persistent project memory for GitHub Copilot: memory-bank templates, slash-command prompts and always-on rules. No manual setup.",
+  "version": "0.3.0",
+  "publisher": "your-org",
+  "license": "MIT",
+  "icon": "src/img/memory.png",
+  "engines": {
+    "vscode": "^1.115.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Other"
+  ],
+  "keywords": [
+    "copilot",
+    "memory bank",
+    "agent",
+    "prompt files",
+    "instructions",
+    "context"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Initializing the memory bank writes files into the workspace, which requires trust."
+    }
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "memoryBank.initialize",
+        "title": "Initialize",
+        "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.openActiveContext",
+        "title": "Open Active Context",
+        "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.addDecision",
+        "title": "Add Decision Record",
+        "category": "Memory Bank"
+      }
+    ],
+    "configuration": {
+      "title": "Copilot Memory Bank",
+      "properties": {
+        "memoryBank.promptOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer to initialize the memory bank when a workspace without one is opened."
+        },
+        "memoryBank.gitignoreActiveContext": {
+          "type": "boolean",
+          "default": false,
+          "description": "When initializing, add memory-bank/activeContext.md to .gitignore (recommended for teams where several developers work in parallel)."
+        },
+        "memoryBank.installHooks": {
+          "type": "boolean",
+          "default": true,
+          "description": "When initializing, also write agent hooks to .github/hooks/ so memory is loaded at session start and the agent is asked to update it before finishing. Requires the chat.useHooks setting in VS Code."
+        },
+        "memoryBank.recommendExtension": {
+          "type": "boolean",
+          "default": true,
+          "description": "When initializing, add this extension to .vscode/extensions.json so teammates are prompted to install it."
+        },
+        "memoryBank.runInitPromptAfterScaffold": {
+          "type": "boolean",
+          "default": true,
+          "description": "After creating the template files, open Copilot Chat with /memory-init pre-filled so the agent can fill them from the codebase."
+        }
+      }
+    },
+    "chatPromptFiles": [
+      { "path": "./prompts/memory-init.prompt.md" },
+      { "path": "./prompts/memory-update.prompt.md" },
+      { "path": "./prompts/task-start.prompt.md" },
+      { "path": "./prompts/memory-prune.prompt.md" }
+    ],
+    "chatInstructions": [
+      {
+        "path": "./instructions/memory-bank.instructions.md",
+        "when": "memoryBank.initialized"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.0.0"
+  }
+}
