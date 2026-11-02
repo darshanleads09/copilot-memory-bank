@@ -4,6 +4,7 @@ Volatile. Move items between sections as work moves. Last updated: 2026-11-02.
 
 ## Done
 
+- Initialized Git metadata, preserved the remote's initial commit, and pushed the source to the GitHub `main` branch.
 - Added the Mermaid lifecycle diagram to the STAR deck; verified the local HTML renders it as SVG and navigation shows 7 slides. Pinned the CDN asset with verified SRI.
 - Added a Mermaid flow diagram to the README showing memory setup, session context injection, bounded task retrieval, manual updates, and optional Stop-hook reminders.
 - Initialized the five core memory files with repository-verified information.
@@ -31,10 +32,10 @@ Volatile. Move items between sections as work moves. Last updated: 2026-11-02.
 
 ## Todo
 
-- Verify branch, worktree status, and recent history from a Git clone.
 - Confirm the intended Windows-compatible test command and supported Node.js version.
 
 ## Known issues
 
 - `npm test` failed in this Windows environment because the test glob was treated as a literal path.
-- No `.git` metadata or CI configuration is present in this source snapshot.
+- Node.js was not available on PATH during the repository-push task, so tests could not be rerun then.
+- No CI configuration is present.

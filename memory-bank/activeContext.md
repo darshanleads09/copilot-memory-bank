@@ -8,6 +8,7 @@ Volatile. Overwrite each session; keep under ~60 lines. Last updated: 2026-11-02
 
 ## Recent changes
 
+- Initialized Git metadata, preserved the remote's initial commit, and pushed the source to `main`.
 - Added the README memory lifecycle as a rendered Mermaid slide in the STAR deck; pinned Mermaid 11.17.2 with verified SRI and confirmed local HTML rendering.
 - Added a Mermaid memory lifecycle diagram to the README, covering setup, session context, task retrieval, updates, and optional hooks.
 - Initialization now copies `templates/copilot-instructions.md` to `.github/copilot-instructions.md` without overwriting an existing file.
