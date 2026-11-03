@@ -1,5 +1,0 @@
-**/bin/
-**/obj/
-.vs/
-.vscode/*.suo
-src/MemoryBank.Inventory.Api/App_Data/
